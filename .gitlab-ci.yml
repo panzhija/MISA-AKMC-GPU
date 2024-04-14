@@ -1,0 +1,89 @@
+stages:
+  - fetch
+  - build
+  - test
+  - deploy
+
+fetch:
+  stage: fetch
+  image:
+    name: genshen/pkg:0.4.1-clang10-mpi
+    entrypoint: [""]
+  variables:
+    PKG_AUTH: 'gitlab-ci-token?${CI_JOB_TOKEN}@git.hpcer.dev'
+  tags:
+    - cpp
+    - pkg
+  cache:
+    key: pkg_cache_v3_kiwi
+    paths:
+      - pkg_cache
+  before_script:
+    - mkdir -p pkg_cache
+    - ln -s $(pwd)/pkg_cache ~/.pkg
+  script:
+    - pkg fetch
+    - pkg install
+    - rm -rf vendor/cache vendor/src
+  artifacts:
+    paths:
+      - vendor
+      - pkg.dep.cmake
+
+build:
+  stage: build
+  image:
+    name: genshen/pkg:0.4.1-clang10-mpi
+    entrypoint: [""]
+  tags:
+    - cpp
+    - pkg
+  script:
+    - cmake -B./cmake-build-debug -S./ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS_DEBUG="-fprofile-instr-generate -fcoverage-mapping" -DCMAKE_C_FLAGS_DEBUG="-fprofile-instr-generate -fcoverage-mapping"
+    - cmake --build ./cmake-build-debug
+  artifacts:
+    paths: # all binary are static linked, so just pass binary
+      - cmake-build-debug/bin
+  dependencies:
+    - fetch
+
+test:
+  stage: test
+  image:
+    name: genshen/pkg:0.4.1-clang10-mpi
+    entrypoint: [""]
+  tags:
+    - cpp
+    - pkg
+  variables:
+    COV_IGNORE_FILES: "--ignore-filename-regex=/usr/local/* --ignore-filename-regex=.*test/unit/*. --ignore-filename-regex=.*vendor/*."
+  script:
+    - mkdir -p coverage
+    - mkdir -p cmake-build-debug/tests/unit # for saving temp files in tests
+    - LLVM_PROFILE_FILE="pkmc-test.profraw" ./cmake-build-debug/bin/pkmc-unit-tests
+    - llvm-profdata merge -sparse pkmc-test.profraw -o pkmc-test.profdata
+    - llvm-cov report ./cmake-build-debug/bin/pkmc-unit-tests  -instr-profile=pkmc-test.profdata ${COV_IGNORE_FILES}
+    - llvm-cov show ./cmake-build-debug/bin/pkmc-unit-tests -instr-profile=pkmc-test.profdata --format=html --summary-only --output-dir=./coverage ${COV_IGNORE_FILES}
+  artifacts:
+    paths:
+      - coverage
+  dependencies:
+    - build
+
+pages:
+  tags: [pages]
+  stage: deploy
+  image:
+    name: alpine:3.12
+  script:
+    - mv coverage public
+  artifacts:
+    paths:
+      - public
+  dependencies:
+    - test
+  only:
+    - master
+    - dev
+
+# code_quality: https://docs.gitlab.com/ee/ci/examples/code_quality.html#previous-job-definitions
