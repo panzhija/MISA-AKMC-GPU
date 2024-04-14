@@ -103,7 +103,7 @@ The job can be submitted using the "sbatch slurm.job" command.
 # Outputs
 OVITO is a scientific visualization and analysis software for atomic and particle simulation data. 
 
-It can be downloaded at "https://www.ovito.org/\#download".
+It can be downloaded at "https://www.ovito.org/#download".
 
 The kmc.out file output by the MISA-AKMC contains the coordinates and atomic type of each lattice point, and one row of data is (atom\_type, x, y, z). 
 We load the kmc.out file into the OVITO software and can see the visualized image of the simulation. 
