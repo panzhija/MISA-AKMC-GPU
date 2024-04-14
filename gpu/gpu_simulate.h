@@ -18,53 +18,35 @@
 #include "../src/lattice/lattices_list.h"
 #include "../src/lattice/lattice_types.h"
 #include "../src/lattice/lattice_list_meta.h"
-
-
+#include <logs/logs.h>
+#include <omp.h>
 
 #ifndef GPU_SIMULATE_H
 #define GPU_SIMULATE_H
 
-#define NN_TOTAL 126
+double first_calculate_GPU(LatticesList *lattice_list, _type_lattice_id *vac_idArray, int vac_total);
 
-#define RE_SCALE_SIZE 2
+double calculate_GPU(LatticesList *lattice_list, const comm::Region<comm::_type_lattice_size> region);
 
-void firstSectLocalToGpu(_type_lattice_id *vac_idArray_adv, _type_lattice_count vac_adv);
+void selectAndPerformEventGPU(LatticesList *lattice_list, double excepted_rand, int rank, unsigned long step, int sect,
+                              const comm::ColoredDomain *p_domain, std::array<std::vector<ChangeLattice>, 7>& exchange_ghost, const unsigned int sector_id);
 
-double first_calculate_GPU(_type_lattice_id *vac_idArray_aft, _type_lattice_count vac_aft, _type_lattice_id *vac_idArray_buf_adv, _type_lattice_count vac_adv, int sect);
-
-double calculate_GPU(const comm::Region<comm::_type_lattice_size> region, int sect);
-
-void selectAndPerformEventGPU(double excepted_rand, int rank, _type_lattice_count step, int sect,
-                              std::array<std::vector<ChangeLattice>, 7>& exchange_ghost, const unsigned int sector_id,
-                              std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_x, 
-                              std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_y,
-                              std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_z);
-
-void calculateNextAdvRegion(int sect);
-
-void sector_final(int sect);
+void sector_final();
 
 void initialize_gpu(int process_rank);
 
 void gpu_final();
 
-void gpu_prepare(const double v, const double T, LatticesList *p_list, comm::ColoredDomain *_p_domain);
+void gpu_prepare(const double v, const double T);
 
-LatticeTypes::lat_type getType(_type_lattice_id latti_id);
+LatticeTypes getType(_type_lattice_id latti_id, LatticesList *lattice_list);
 
-void exchange_lattices(dev_event h_event);
+void exchange_lattices(LatticesList *lattice_list, _type_lattice_id from_id, _type_lattice_id to_id);
 
-void add_ghost(std::array<std::vector<ChangeLattice>, 7>& exchange_ghost,
+void print_kernel_time();
+
+void add_ghost(const comm::ColoredDomain *p_domain, std::array<std::vector<ChangeLattice>, 7>& exchange_ghost,
                _type_lattice_id x, _type_lattice_id y, _type_lattice_id z, Lattice lat_to, const unsigned int sector_id);
-
-void initInfo(_type_lattice_count vac_total, _type_lattice_id *vac_idArray,
-              dev_Vacancy *h_vacancy, dev_nnLattice *h_nnneighbour);
-
-void add_surface(_type_lattice_id surface_id,
-                 std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_x, 
-                 std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_y,
-                 std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_z);
-
 // extern void transSizeToGPU(long meta_size_z, long meta_size_z, long meta_size_z);
 
 #endif /*GPU_SIMULATE_H*/

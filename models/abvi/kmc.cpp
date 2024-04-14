@@ -21,32 +21,38 @@ ABVIModel::ABVIModel(Box *box, double v, double T) : box(box), v(v), T(T) {}
 
 void ABVIModel::transFirstsectLocalToGpu(const comm::Region<comm::_type_lattice_size> region) {
 
-  _type_lattice_id *vac_idArray_adv;
-  vac_idArray_adv = (_type_lattice_id *)malloc(box->lattice_list->vac_hash.size() * sizeof(_type_lattice_id));
-  _type_lattice_count vac_adv = 0;
+  // _type_lattice_id *vac_idArray_adv;
+  // vac_idArray_adv = (_type_lattice_id *)malloc(box->lattice_list->vac_hash.size() * sizeof(_type_lattice_id));
+  // _type_lattice_count vac_adv = 0;
+  // // _type_lattice_size x_adv_low = 2 * (region.x_low + p_domain->lattice_size_ghost[0]) + 100;
+  // // _type_lattice_size y_adv_low = region.y_low + p_domain->lattice_size_ghost[1] + 100;
+  // // _type_lattice_size z_adv_low = region.z_low + p_domain->lattice_size_ghost[2] + 100;
+  // // _type_lattice_size x_adv_high = 2 * (region.x_high - p_domain->lattice_size_ghost[0]) - 100;
+  // // _type_lattice_size y_adv_high = region.y_high - p_domain->lattice_size_ghost[1] - 100;
+  // // _type_lattice_size z_adv_high = region.z_high - p_domain->lattice_size_ghost[2] - 100;
 
-  _type_lattice_size x_adv_low = region.x_low + p_domain->lattice_size_ghost[0] + 3;
-  _type_lattice_size y_adv_low = region.y_low + p_domain->lattice_size_ghost[1] + 3;
-  _type_lattice_size z_adv_low = region.z_low + p_domain->lattice_size_ghost[2] + 3;
-  _type_lattice_size x_adv_high = region.x_high - p_domain->lattice_size_ghost[0] - 3;
-  _type_lattice_size y_adv_high = region.y_high - p_domain->lattice_size_ghost[1] - 3;
-  _type_lattice_size z_adv_high = region.z_high - p_domain->lattice_size_ghost[2] - 3;
+  // _type_lattice_id x_adv_low = region.x_low + p_domain->lattice_size_ghost[0] + 3;
+  // _type_lattice_id y_adv_low = region.y_low + p_domain->lattice_size_ghost[1] + 3;
+  // _type_lattice_id z_adv_low = region.z_low + p_domain->lattice_size_ghost[2] + 3;
+  // _type_lattice_id x_adv_high = region.x_high - p_domain->lattice_size_ghost[0] - 3;
+  // _type_lattice_id y_adv_high = region.y_high - p_domain->lattice_size_ghost[1] - 3;
+  // _type_lattice_id z_adv_high = region.z_high - p_domain->lattice_size_ghost[2] - 3;
 
-  assert(x_adv_low < x_adv_high);
-  assert(y_adv_low < y_adv_high);
-  assert(z_adv_low < z_adv_high);
-  for (const auto& pair : box->lattice_list->vac_hash) {
-    _type_lattice_size x = pair.first % box->lattice_list->meta.size_x;
-    _type_lattice_size y = (pair.first / box->lattice_list->meta.size_x) % box->lattice_list->meta.size_y;
-    _type_lattice_size z = pair.first / (box->lattice_list->meta.size_x * box->lattice_list->meta.size_y);
+  // assert(2 * x_adv_low < x_adv_high);
+  // assert(y_adv_low < y_adv_high);
+  // assert(z_adv_low < z_adv_high);
+  // for (const auto& pair : box->lattice_list->vac_hash) {
+  //   _type_lattice_size x = pair.first % box->lattice_list->meta.size_x;
+  //   _type_lattice_size y = (pair.first / box->lattice_list->meta.size_x) % box->lattice_list->meta.size_y;
+  //   _type_lattice_size z = pair.first / (box->lattice_list->meta.size_x * box->lattice_list->meta.size_y);
 
-    if(2 * x_adv_low <= x && x < x_adv_high && y_adv_low <= y && y < y_adv_high && z_adv_low <= z && z < z_adv_high){
-      vac_idArray_adv[vac_adv++] = pair.first;
-      // kiwi::logs::v(" ", " id is : {} x is : {} y is : {} z is : {}.\n", pair.first, x, y, z);
-    }
-  }
-  // kiwi::logs::v(" ", " first vac_adv count is : {}.\n", vac_adv);
-  firstSectLocalToGpu(vac_idArray_adv, vac_adv);
+  //   if(2 * x_adv_low <= x && x < x_adv_high && y_adv_low <= y && y < y_adv_high && z_adv_low <= z && z < z_adv_high){
+  //     vac_idArray_adv[vac_adv++] = pair.first;
+  //     // kiwi::logs::v(" ", " id is : {} x is : {} y is : {} z is : {}.\n", pair.first, x, y, z);
+  //   }
+  // }
+  // // kiwi::logs::v(" ", " first vac_adv count is : {}.\n", vac_adv);
+  // firstSectLocalToGpu(vac_idArray_adv, vac_adv);
 }
 
 // 这个函数的主要作用是计算指定仿真区域内的某种类型的迁移速率（transition rates）。
@@ -120,61 +126,31 @@ _type_rate ABVIModel::calcRatesGPU(const comm::Region<comm::_type_lattice_size> 
   //   std::cout << "rank is" << SimulationDomain::comm_sim_pro.own_rank << "vac_map->first: " << iter->first << std::endl;
   // }
   if(*sector_first){
-    _type_lattice_id *vac_idArray_aft;
-    vac_idArray_aft = (_type_lattice_id *)malloc(box->lattice_list->vac_hash.size() * sizeof(_type_lattice_id));
-    _type_lattice_count vac_aft = 0;
+    _type_lattice_id *vac_idArray;
+    vac_idArray = (_type_lattice_id *)malloc(box->lattice_list->vac_hash.size() * sizeof(_type_lattice_id));
+    _type_lattice_count vac_count = 0;
 
-    _type_lattice_id *vac_idArray_buf_adv;
-    vac_idArray_buf_adv = (_type_lattice_id *)malloc(box->lattice_list->vac_hash.size() * sizeof(_type_lattice_id));
-    _type_lattice_count vac_adv = 0;
-
-    _type_lattice_size x_adv_low = region.x_low + p_domain->lattice_size_ghost[0] + 3;
-    _type_lattice_size y_adv_low = region.y_low + p_domain->lattice_size_ghost[1] + 3;
-    _type_lattice_size z_adv_low = region.z_low + p_domain->lattice_size_ghost[2] + 3;
-    _type_lattice_size x_adv_high = region.x_high - p_domain->lattice_size_ghost[0] - 3;
-    _type_lattice_size y_adv_high = region.y_high - p_domain->lattice_size_ghost[1] - 3;
-    _type_lattice_size z_adv_high = region.z_high - p_domain->lattice_size_ghost[2] - 3;
-    assert(x_adv_low < x_adv_high);
-    assert(y_adv_low < y_adv_high);
-    assert(z_adv_low < z_adv_high);
-    
-    _type_lattice_size x_adv_buf_low = region_next.x_low + p_domain->lattice_size_ghost[0] + 3;
-    _type_lattice_size y_adv_buf_low = region_next.y_low + p_domain->lattice_size_ghost[1] + 3;
-    _type_lattice_size z_adv_buf_low = region_next.z_low + p_domain->lattice_size_ghost[2] + 3;
-    _type_lattice_size x_adv_buf_high = region_next.x_high - p_domain->lattice_size_ghost[0] - 3;
-    _type_lattice_size y_adv_buf_high = region_next.y_high - p_domain->lattice_size_ghost[1] - 3;
-    _type_lattice_size z_adv_buf_high = region_next.z_high - p_domain->lattice_size_ghost[2] - 3;
-    assert(x_adv_buf_low < x_adv_buf_high);
-    assert(y_adv_buf_low < y_adv_buf_high);
-    assert(z_adv_buf_low < z_adv_buf_high);
-
-    bool is_adv;
-  
     for (const auto& pair : box->lattice_list->vac_hash) {
       _type_lattice_size x = pair.first % box->lattice_list->meta.size_x;
       _type_lattice_size y = (pair.first / box->lattice_list->meta.size_x) % box->lattice_list->meta.size_y;
       _type_lattice_size z = pair.first / (box->lattice_list->meta.size_x * box->lattice_list->meta.size_y);
-      is_adv = 2 * x_adv_low <= x && x < x_adv_high && y_adv_low <= y && y < y_adv_high && z_adv_low <= z && z < z_adv_high;
       // 传输当前扇区剩下的空位
-      if(2 * region.x_low <= x && x < 2 * region.x_high && region.y_low <= y && y < region.y_high && region.z_low <= z && z < region.z_high && !(is_adv)){
-        vac_idArray_aft[vac_aft++] = pair.first;
+      if(2 * region.x_low <= x && x < 2 * region.x_high && region.y_low <= y && y < region.y_high && region.z_low <= z && z < region.z_high){
+        vac_idArray[vac_count++] = pair.first;
         // kiwi::logs::v(" ", " id is : {} x is : {} y is : {} z is : {}.\n", pair.first, x, y, z);
       }
-      // 若当前的扇区不是最后一次迭代的最后一个扇区，则预传下一个扇区的部分空位
-      if(is_last_step != 1 || sect != 7) {
-        if(2 * x_adv_buf_low <= x && x < x_adv_buf_high && y_adv_buf_low <= y && y < y_adv_buf_high && z_adv_buf_low <= z && z < z_adv_buf_high) {
-          vac_idArray_buf_adv[vac_adv++] = pair.first;
-          // kiwi::logs::v(" ", " id is : {} x is : {} y is : {} z is : {}.\n", pair.first, x, y, z);
-        }
-      }
     }
-    *sector_first = false;
     // std::sort(vac_idArray, vac_idArray + vac_total);
     // kiwi::logs::v(" ", " vac_aft count is : {}.\n", vac_aft);
     // kiwi::logs::v(" ", " next_vac_adv count is : {}.\n", vac_adv);
-    return first_calculate_GPU(vac_idArray_aft, vac_aft, vac_idArray_buf_adv, vac_adv, sect);
+    if(vac_count == 0){
+      return 0;
+    }else {
+      *sector_first = false;
+      return first_calculate_GPU(box->lattice_list, vac_idArray, vac_count);
+    }
   }else{
-    return calculate_GPU(region, sect);
+    return calculate_GPU(box->lattice_list, region);
   }
 }
 
@@ -200,14 +176,14 @@ _type_rate ABVIModel::calcRatesGPU(const comm::Region<comm::_type_lattice_size> 
 //       return 0;
 //     }else{
 //       //std::cout << "vac_total is : " << vac_total<< std::endl;
-//       return first_calculate_GPU2(box->lattice_list, vac_idArray, vac_total, box);
+//       return first_calculate_GPU(box->lattice_list, vac_idArray, vac_total);
 //     }
 // }
 
 _type_rate ABVIModel::defectGenRate() { return env::global_env.defect_gen_rate; }
 
 void ABVIModel::selectAndPerformOnGPU(const _type_rate rate, int rank, _type_lattice_count step, int sect, const unsigned int sector_id, const unsigned int next_sector_id) {
-  selectAndPerformEventGPU(rate, rank, step, sect, exchange_ghost, sector_id, exchange_surface_x, exchange_surface_y, exchange_surface_z);
+  selectAndPerformEventGPU(box->lattice_list, rate, rank, step, sect, p_domain, exchange_ghost, sector_id);
 }
 
 // lat_region region：表示某个区域的参数。
@@ -1362,29 +1338,26 @@ void ABVIModel::addExchange_surface(_type_lattice_id surface_id) {
   const int dims[comm::DIMENSION_SIZE] = {comm::DIM_X, comm::DIM_Y, comm::DIM_Z};
   // todo the regions can be static.
   std::array<std::vector<comm::Region<comm::_type_lattice_coord>>, comm::DIMENSION_SIZE> send_regions; // send regions in each dimension
-  _type_lattice_size x_low;
-  _type_lattice_size y_low;
-  _type_lattice_size z_low;
-  _type_lattice_size x_high;
-  _type_lattice_size y_high;
-  _type_lattice_size z_high;
+  // 应该可以不循环 8 次的 ？ 如果发送区没有重叠的话
   for (int sect = 0; sect < 8; sect++) {
     for (int d = 0; d < comm::DIMENSION_SIZE; d++) {
       send_regions[d] = comm::fwCommSectorSendRegion(sect, dims[d], p_domain->lattice_size_ghost,
                                                      p_domain->local_split_coord, p_domain->local_sub_box_lattice_region);
+    }
+    for(int d = 0; d < comm::DIMENSION_SIZE; d++) {
       for (auto &r : send_regions[d]) {
-        x_low = 2 * r.x_low;
-        y_low = r.y_low;
-        z_low = r.z_low;
-        x_high = 2 * r.x_high;
-        y_high = r.y_high;
-        z_high = r.z_high;
+        _type_lattice_size x_low = 2 * r.x_low;
+        _type_lattice_size y_low = r.y_low;
+        _type_lattice_size z_low = r.z_low;
+        _type_lattice_size x_high = 2 * r.x_high;
+        _type_lattice_size y_high = r.y_high;
+        _type_lattice_size z_high = r.z_high;
     
         if(x_low <= surface_x && surface_x < x_high && y_low <= surface_y && surface_y < y_high && z_low <= surface_z && surface_z < z_high){
-          if(d == comm::DIM_X){
+          if(d == 0){
             auto it_from = exchange_surface_x[sect].find(surface_id);
             if(it_from == exchange_surface_x[sect].end()) exchange_surface_x[sect].emplace(surface_id);
-          }else if(d == comm::DIM_Y) {
+          }else if(d == 1) {
             auto it_from = exchange_surface_y[sect].find(surface_id);
             if(it_from == exchange_surface_y[sect].end()) exchange_surface_y[sect].emplace(surface_id);
           }else {
@@ -1420,3 +1393,1074 @@ void ABVIModel::clear_exchange_surface(const unsigned int next_sect){
 unsigned long ABVIModel::defectSize() {
   return 1; // todo add implementation
 }
+
+// void ABVIModel::add_test_surface_commu(const unsigned int next_sector_id){
+//   int total = 0;
+//   const int dims[comm::DIMENSION_SIZE] = {comm::DIM_X, comm::DIM_Y, comm::DIM_Z};
+//   // todo the regions can be static.
+//   std::array<std::vector<comm::Region<comm::_type_lattice_coord>>, comm::DIMENSION_SIZE> send_regions; // send regions in each dimension
+//   // 应该可以不循环 8 次的 ？ 如果发送区没有重叠的话
+//   for (int d = 0; d < comm::DIMENSION_SIZE; d++) {
+//     send_regions[d] = comm::fwCommSectorSendRegion(next_sector_id, dims[d], p_domain->lattice_size_ghost,
+//                                                    p_domain->local_split_coord, p_domain->local_sub_box_lattice_region);
+//   }
+//   for(int d = 0; d < comm::DIMENSION_SIZE; d++) {
+//     for (auto &r : send_regions[d]) {
+//       _type_lattice_size x_low = 2 * r.x_low;
+//       _type_lattice_size y_low = r.y_low;
+//       _type_lattice_size z_low = r.z_low;
+//       _type_lattice_size x_high = 2 * r.x_high;
+//       _type_lattice_size y_high = r.y_high;
+//       _type_lattice_size z_high = r.z_high;
+    
+//       if(x_low <= surface_x && surface_x < x_high && y_low <= surface_y && surface_y < y_high && z_low <= surface_z && surface_z < z_high){
+//         if(d == 0){
+//           auto it_from = exchange_surface_x[sect].find(surface_id);
+//           if(it_from == exchange_surface_x[sect].end()) exchange_surface_x[sect].emplace(surface_id);
+//         }else if(d == 1) {
+//           auto it_from = exchange_surface_y[sect].find(surface_id);
+//           if(it_from == exchange_surface_y[sect].end()) exchange_surface_y[sect].emplace(surface_id);
+//         }else {
+//           auto it_from = exchange_surface_z[sect].find(surface_id);
+//           if(it_from == exchange_surface_z[sect].end()) exchange_surface_z[sect].emplace(surface_id);
+//         }
+//       }
+//     }
+//   }
+// }
+
+// int ABVIModel::add_test_commu(const unsigned int sector_id) {
+//   int total = 0;
+//   _type_lattice_id latti_id;
+//   switch (sector_id)
+//   {
+//     case 0:
+//       // 不需要存储转发 直接向下
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.z_low; // 2   
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = LatticeTypes{LatticeTypes::Fe};
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[0].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // // 需要存储转发1次 先向下，再向前
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向下，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向下，再向前，最后向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向前
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向前，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向左
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//     case 1:
+//       // 不需要存储转发 直接向下
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.x_low; // 2
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       //  需要存储转发1次 先向下，再向前
+//       // x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       // y_low = p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向下，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.x_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向下，再向前，最后向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向前
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向前，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向右
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high); 
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//     case 2:
+//       // 不需要存储转发 直接向下
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向下，再向后
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向下，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向下，再向后，最后向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向后
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向后，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向左
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//     case 3:
+//       // 不需要存储转发 直接向下
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向下，再向后
+//       // x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向下，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向下，再向后，最后向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low - p_domain->lattice_size_ghost[2]; // 0
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向后
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向后，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向右
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high); 
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_sub_box_lattice_region.z_low; // 2
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_split_coord[2] + p_domain->lattice_size_ghost[2]; 
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//     case 4:
+//       // 不需要存储转发 直接向上
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向上，再向前
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向上，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向上，再向前，最后向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向前
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向前，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向左
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//     case 5:
+//       // 不需要存储转发 直接向上
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       //  需要存储转发1次 先向上，再向前
+//       // x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       // y_low = p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向上，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向上，再向前，最后向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向前
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向前，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_low - p_domain->lattice_size_ghost[1]; // 0
+//       // z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向右
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high); 
+//       y_low = p_domain->local_sub_box_lattice_region.y_low; // 2
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_split_coord[1] + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//     case 6:
+//       // 不需要存储转发 直接向上
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向上，再向后
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向上，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向上，再向后，最后向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向后
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_split_coord[0] + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向后，再向左
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向左
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_low - p_domain->lattice_size_ghost[0]); // 0
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_low); // 2
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//     case 7:
+//       // 不需要存储转发 直接向上
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向上，再向后
+//       // x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[1].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发1次 先向上，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[2].push_back(latti);
+//       //   break;
+//       // }
+//       // 需要存储转发2次 先向上，再向后，最后向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_sub_box_lattice_region.z_high;
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high + p_domain->lattice_size_ghost[2];
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[3].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向后
+//       x_low = 2 * (p_domain->local_split_coord[0] - p_domain->lattice_size_ghost[0]);
+//       y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       // 需要存储转发1次 先向后，再向右
+//       // x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high);
+//       // y_low = p_domain->local_sub_box_lattice_region.y_high;
+//       // z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       // x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       // y_high = p_domain->local_sub_box_lattice_region.y_high + p_domain->lattice_size_ghost[1];
+//       // z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       // if(x_low <= x && x < x_high && y_low <= y && y < y_high && z_low <= z && z < z_high){
+//       //   ChangeLattice latti;
+//       //   latti.type = lat_to.type;
+//       //   latti.x = x;
+//       //   latti.y = y;
+//       //   latti.z = z;
+//       //   exchange_ghost[5].push_back(latti);
+//       //   break;
+//       // }
+
+//       // 不需要存储转发 直接向右
+//       x_low = 2 * (p_domain->local_sub_box_lattice_region.x_high); 
+//       y_low = p_domain->local_split_coord[1] - p_domain->lattice_size_ghost[1];
+//       z_low = p_domain->local_split_coord[2] - p_domain->lattice_size_ghost[2]; 
+//       x_high = 2 * (p_domain->local_sub_box_lattice_region.x_high + p_domain->lattice_size_ghost[0]);
+//       y_high = p_domain->local_sub_box_lattice_region.y_high;
+//       z_high = p_domain->local_sub_box_lattice_region.z_high;
+//       for(int x = x_low; x < x_high / 2){
+//         for(int y = y_low; y < y_high){
+//           for(int z = z_low; z < z_high){
+//             ChangeLattice latti;
+//             latti.type = lat_to.type;
+//             latti.x = x;
+//             latti.y = y;
+//             latti.z = z;
+//             exchange_ghost[4].push_back(latti);
+//             total++;
+//           }
+//         }
+//       }
+//       break;
+//   default:
+//     assert(false);
+//     break;
+//   }
+//   return total;
+// }

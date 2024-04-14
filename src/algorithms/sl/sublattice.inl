@@ -9,7 +9,6 @@
 #include "utils/random/random.h"
 #include "utils/simulation_domain.h"
 #include "pack/sim_sync_packer.h"
-#include "pack/sim_ghost_combine_packer.h"
 #include <cmath>
 #include <comm/comm.hpp>
 #include <comm/preset/sector_forwarding_region.h>
@@ -35,9 +34,13 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
   //int error0;
   // gpu_prepare(const long size_x, const long size_y, const long size_z, const double v, const double T)
   bool sector_first;
-  //bool sector_first2;
+  bool sector_first2;
   int is_last_step = 0;
   //int ii = 0;
+  int itera1 = 0;
+  int itera2 = 0;
+  int max_itera1 = 0;
+  int max_itera2 = 0;
   // p_event_hooks->onStepFinished(0);
   if(SimulationDomain::comm_sim_pro.own_rank == 0) {
     kiwi::logs::v(" ", " rank id is : {} x dimension divided is : {} y dimension divided is : {} z dimension divided is : {}.\n", 
@@ -46,15 +49,11 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
     p_model->p_domain->sub_box_lattice_size[1],
     p_model->p_domain->sub_box_lattice_size[2]);
   }
-  // p_event_hooks->onStepFinished(0);
-  // MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
-  // time_total_start = MPI_Wtime();
-  #ifdef KMC_GPU_MODE
-    p_model->transFirstsectLocalToGpu(p_domain->local_sector_region[(*sec_meta.sector_itl).id]);
-  #endif
-  // p_model->transFirstsectLocalToGpu(p_domain->local_sector_region[(*sec_meta.sector_itl).id]);
-  // time_calculate_end = MPI_Wtime() - time_calculate_start;
-  // if(SimulationDomain::comm_sim_pro.own_rank == 0) vac_time_total += time_calculate_end;
+
+  //time_total_start = MPI_Wtime();
+  //p_model->transFirstsectLocalToGpu(p_domain->local_sector_region[(*sec_meta.sector_itl).id]);
+  //time_total_end = MPI_Wtime() - time_total_start;
+  //if(SimulationDomain::comm_sim_pro.own_rank == 0) time_calculate_total += time_total_end;
   // 扇区的执行顺序是 0, 7, 2, 5, 3, 4, 1, 6
   MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
   time_total_start = MPI_Wtime();
@@ -73,28 +72,27 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
       p_model->clear_exchange_ghost();
       p_model->clear_exchange_surface((*sec_meta.sector_itl).id);
       sector_first = true;
+      sector_first2 = true;
       //ii = 0;
+      //const type_sector next_sector = sec_meta.sector_itl.next();
       //if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", " step is : {} sect is : {} starting !!!.\n", step, sect);
-
-      //MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
-      //time_total_start = MPI_Wtime();
-      //for(int ir = 0; ir < 20000; ir++) {
+      // MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
       while (sector_time < step_threshold_time) { // note: step_threshold_time may be less then 0.0
         // 各个方向的迁移机率，并将其累加
         time_calculate_start = MPI_Wtime();
         const double total_rates = calcRatesWrapper(p_model, (*sec_meta.sector_itl).id, &sector_first, sect, is_last_step);
         time_calculate_end = MPI_Wtime() - time_calculate_start;
         if(SimulationDomain::comm_sim_pro.own_rank == 0) vac_time_total += time_calculate_end;
-        // if(SimulationDomain::comm_sim_pro.own_rank == 0) {
-        //   kiwi::logs::v(" ", " step is : {} sect is : {} ii is : {} total_rates is : {}.\n", step, sect, ii, total_rates);
-        //   //sector_first2 = false;
+        // if(SimulationDomain::comm_sim_pro.own_rank == 0 && sector_first2) {
+        //   kiwi::logs::v(" ", " step is : {} sect is : {} total_rates is : {}.\n", step, sect, total_rates);
+        //   sector_first2 = false;
         // }
         // if(total_rates != 0 && sector_first2){
         //   kiwi::logs::v(" ", "rank is : {} step is : {} sect is : {} step_threshold_time is : {} sector_time is : {} total_rates is : {} i is : {} .\n", SimulationDomain::comm_sim_pro.own_rank, step, sect, step_threshold_time, sector_time, total_rates, i);
         //   // std::cout << " rank is : " << SimulationDomain::comm_sim_pro.own_rank << " step is : " << step << " sect is : " << sect << " step_threshold_time is : " << step_threshold_time << " sector_time is :" << sector_time << " total_rates is : " << total_rates << std::endl;
         //   sector_first2 = false;
         // }
-        // ii++;
+        //ii++;
         // if(total_rates != 0 && sector_first2){
         //   std::cout << " rank is : " << SimulationDomain::comm_sim_pro.own_rank << " step is : " << step << " sect is : " << sect << " step_threshold_time is : " << step_threshold_time << " sector_time is :" << sector_time << " total_rates is : " << total_rates << std::endl;
         // }
@@ -122,29 +120,17 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
         // todo: time comparing, nearest principle based on predicting
         // next delta t.  时间比较，基于预测下一个Δt的最接近原理。
       }
-      //time_total_end = MPI_Wtime() - time_total_start;
-      //if(SimulationDomain::comm_sim_pro.own_rank == 0) time_calculate_total += time_total_end;
       // kiwi::logs::v(" ", "rank is : {} step is : {} sect is : {} i is : {} .\n", SimulationDomain::comm_sim_pro.own_rank, step, sect, i);
       // gettimeofday(&time_end,NULL);
       // timeuse = (time_end.tv_sec - time_start.tv_sec) * 1.0 + (double)(time_end.tv_usec - time_start.tv_usec) / 1.0e6;
       // std::cout << " rank is : " << SimulationDomain::comm_sim_pro.own_rank << " calculate time is : " << timeuse <<  " s " << std::endl;
       // MPI_Reduce(&timeuse, &max_time, 1, MPI_DOUBLE, MPI_MAX, 0, SimulationDomain::comm_sim_pro.comm);
-      #ifdef KMC_GPU_MODE
-        if(!sector_first) sector_final(sect);
-      #endif
-      // if(!sector_first) sector_final(sect);
+      if(!sector_first) sector_final();
       // 不断的发生事件，当sector_time >= step_threshold_time后结束。
       // kmc simulation on this sector is finished
       // we store evolution time of current sector when the sector loop
       // finishes.  该扇区的kmc模拟已完成，当扇区循环结束时，我们存储当前扇区的演变时间。
       sec_meta.sector_itl->evolution_time += sector_time;
-      #ifdef KMC_GPU_MODE
-        calculateNextAdvRegion(sect);
-      #endif
-      //MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
-      // if(SimulationDomain::comm_sim_pro.own_rank == 0 && step > 51 && step < 56){
-      //   kiwi::logs::v(" ", "rank id is : {} step is : {} sect is : {} sec_meta.sector_itl->evolution_time is : {} sector_time is : {}.\n", SimulationDomain::comm_sim_pro.own_rank, step, sect, sec_meta.sector_itl->evolution_time, sector_time);
-      // }
       // communicate ghost area of current process to sync simulation
       // regions of neighbor process. 
       // 通信当前进程的重影区域以同步相邻进程的模拟区域。
@@ -152,14 +138,16 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
       // timeuse = (time_end.tv_sec - time_start.tv_sec) * 1.0e3 + (double)(time_end.tv_usec - time_start.tv_usec) / 1.0e3;
       // std::cout << "rank is : " << SimulationDomain::comm_sim_pro.own_rank << "step is :  " << step << "sect is : " << sect << "time is : " << timeuse << std::endl;
       // gettimeofday(&time_start,NULL);
-      //calculateNextAdvRegion(sect);
+      // int ghost_commu_size = p_model->add_test_commu((*sec_meta.sector_itl).id);
+      // int surface_commu_size = p_model->add_test_surface_commu(next_sector.id);
+      //MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
+      //calculateNextRegionAdv(sect);
       time_commu_start = MPI_Wtime();
-
       syncSimRegions<PKs>(pk_inst, p_model->exchange_ghost, p_model->exchange_surface_x, p_model->exchange_surface_y, p_model->exchange_surface_z);
-      //syncSimGohstRegionsCombine<PKs>(pk_inst, p_model->exchange_ghost, p_model->exchange_surface_x, p_model->exchange_surface_y, p_model->exchange_surface_z);
       syncNextSectorGhostRegions<PKg>(pk_inst, p_model->exchange_surface_x, p_model->exchange_surface_y, p_model->exchange_surface_z); // communicate ghost area data of next sector in
                                                 // current process. 通信当前进程中下一个扇区的重影区域数据。
 
+      //MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
       time_commu_end = MPI_Wtime() - time_commu_start;
       MPI_Reduce(&time_commu_end, &max_time_commu, 1, MPI_DOUBLE, MPI_MAX, 0, SimulationDomain::comm_sim_pro.comm);
       if(SimulationDomain::comm_sim_pro.own_rank == 0) time_commu_total += max_time_commu;
@@ -177,11 +165,12 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
     }
     p_event_hooks->onStepFinished(step);
   }
-  MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
-  time_total_end = MPI_Wtime() - time_total_start;
-
+  // if(SimulationDomain::comm_sim_pro.own_rank == 0) time_calculate_total += time_total_end;
   p_event_hooks->onAllDone(); //空的函数
   gpu_final();
+  MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
+  time_total_end = MPI_Wtime() - time_total_start;
+  //print_kernel_time();
   // MPI_Reduce(&itera1, &max_itera1, 1, MPI_INT, MPI_MAX, 0, SimulationDomain::comm_sim_pro.comm);
   // MPI_Reduce(&itera2, &max_itera2, 1, MPI_INT, MPI_MAX, 0, SimulationDomain::comm_sim_pro.comm);
   // if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", "  max_itera1  1 is : {} . \n", max_itera1);
@@ -190,12 +179,9 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
 }
 
 template <typename E> double SubLattice::calcRatesWrapper(ModelAdapter<E> *p_model, const type_sector_id sector_id, bool *sector_first, int sect, int is_last_step) {
-  const type_sector next_sector = sec_meta.sector_itl.next();
-  #ifdef KMC_GPU_MODE
-    return p_model->calcRatesGPU(p_domain->local_sector_region[sector_id], sector_first, p_domain->local_sector_region[next_sector.id], sect, is_last_step);
-  #else
-    return p_model->calcRates(p_domain->local_sector_region[sector_id]);
-  #endif
+   const type_sector next_sector = sec_meta.sector_itl.next();
+   return p_model->calcRatesGPU(p_domain->local_sector_region[sector_id], sector_first, p_domain->local_sector_region[next_sector.id], sect, is_last_step);
+   //return p_model->calcRates(p_domain->local_sector_region[sector_id]);
 }
 
 template <typename E>
@@ -203,11 +189,8 @@ void SubLattice::selectPerformWrapper(ModelAdapter<E> *p_model, const _type_rate
                                       const type_sector_id sector_id, int rank, _type_lattice_count step, int sect) {
   // 进程当前的子域id 和 各个方向的迁移机率之和作为参数
   const type_sector next_sector = sec_meta.sector_itl.next();
-  #ifdef KMC_GPU_MODE
-    p_model->selectAndPerformGPU(rank, step, sect, sector_id, next_sector.id);
-  #else
-    p_model->selectAndPerform(p_domain->local_sector_region[sector_id], total_rates, rank, step, sect, sector_id, next_sector.id);
-  #endif
+  p_model->selectAndPerformGPU(rank, step, sect, sector_id, next_sector.id);
+  //p_model->selectAndPerform(p_domain->local_sector_region[sector_id], total_rates, rank, step, sect, sector_id, next_sector.id);
 }
 
 // PKs：打包器（Packer）的类型，用于打包数据以进行通信。
@@ -250,99 +233,7 @@ void SubLattice::selectPerformWrapper(ModelAdapter<E> *p_model, const _type_rate
 //   LatticesList *lattice_list;
 // };
 
-template <class PKs, class Ins> void SubLattice::syncSimGohstRegionsCombine(Ins &pk_inst, std::array<std::vector<ChangeLattice>, 7>& exchange_ghost, 
-                                                                            std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_x,
-                                                                            std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_y, 
-                                                                            std::array<std::unordered_set<_type_lattice_id>, 8>& exchange_surface_z) {
 
-  const type_sector cur_sector = (*sec_meta.sector_itl);
-  const type_sector next_sector = sec_meta.sector_itl.next();
-
-  const std::array<unsigned int, comm::DIMENSION_SIZE> send_dirs = ssfdCommRecvDirs(cur_sector.id);
-  const std::array<unsigned int, comm::DIMENSION_SIZE> recv_dirs = ssfdCommSendDirs(cur_sector.id);
-
-  const std::array<unsigned int, comm::DIMENSION_SIZE> send_dirs_surface = ssfdCommSendDirs(next_sector.id);
-  const std::array<unsigned int, comm::DIMENSION_SIZE> recv_dirs_surface = ssfdCommRecvDirs(next_sector.id);
-
-  const std::array<unsigned int, comm::DIMENSION_SIZE> ranks_send = {
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_X][send_dirs[0]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Y][send_dirs[1]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Z][send_dirs[2]]),
-  };
-  const std::array<unsigned int, comm::DIMENSION_SIZE> ranks_recv = {
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_X][recv_dirs[0]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Y][recv_dirs[1]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Z][recv_dirs[2]]),
-  };
-
-  const std::array<unsigned int, comm::DIMENSION_SIZE> ranks_send_surface = {
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_X][send_dirs_surface[0]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Y][send_dirs_surface[1]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Z][send_dirs_surface[2]]),
-  };
-  const std::array<unsigned int, comm::DIMENSION_SIZE> ranks_recv_surface = {
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_X][recv_dirs_surface[0]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Y][recv_dirs_surface[1]]),
-      static_cast<unsigned int>(p_domain->rank_id_neighbours[comm::DIM_Z][recv_dirs_surface[2]]),
-  };
-
-  const int SingleSideForwardingTagCombine = 0x110;
-  const int SingleSideForwardingTagSurface = 0x111;
-  SimGhostCombinePacker packer = pk_inst.newSimGhostCombineCommPacker();
-
-  ChangeLattice send_count;
-  const MPI_Datatype data_type = packer.getMPI_DataTypeChange();
-  int num_send[12];
-  int num_receive[12];
-  int num_send_surface[12];
-  int num_receive_surface[12];
-  ChangeLattice *send_buff;
-  ChangeLattice *receive_buff;
-  MPI_Status status;
-  MPI_Status status_surface;
-  MPI_Status send_statuses[12];
-  MPI_Status recv_statuses[12];
-  MPI_Status send_statuses_surface[12];
-  MPI_Status recv_statuses_surface[12];
-  MPI_Request send_requests[12];
-  MPI_Request send_requests_surface[12];
-  // 0, 7, 2, 5, 3, 4, 1, 6
-  for (int d = 0; d < 11; d++) {
-    num_send[d] = packer.sendLengthGhost(d, exchange_ghost, &send_count);
-    send_buff = new ChangeLattice[num_send[d]];
-    packer.onSendGhost(d, send_buff, exchange_ghost, send_count);
-    MPI_Isend(send_buff, num_send[d], data_type, ranks_send[d], SingleSideForwardingTagCombine,
-              SimulationDomain::comm_sim_pro.comm, &send_requests[d]);
-    MPI_Probe(ranks_recv[d], SingleSideForwardingTagCombine, SimulationDomain::comm_sim_pro.comm, &status);
-    MPI_Get_count(&status, data_type, &num_receive[d]);
-    receive_buff = new ChangeLattice[num_receive[d]];
-    MPI_Recv(receive_buff, num_receive[d], data_type, ranks_recv[d],
-             SingleSideForwardingTagCombine, SimulationDomain::comm_sim_pro.comm, &recv_statuses[d]);
-    packer.onReceiveGhost(d, receive_buff, num_receive[d], exchange_ghost, cur_sector.id, exchange_surface_x, exchange_surface_y, exchange_surface_z, p_domain);
-    MPI_Wait(&send_requests[d], &send_statuses[d]);
-    // release buffer
-    delete[] send_buff;
-    delete[] receive_buff;
-  }
-
-  // num_send[2] = packer.sendLengthCombine(exchange_ghost, exchange_surface_z[next_sector.id]);
-  // send_buff = new ChangeLattice[num_send[2]];
-  // packer.onSendCombine(send_buff, exchange_ghost, exchange_surface_z[next_sector.id]);
-  // MPI_Isend(send_buff, num_send[2], data_type, ranks_send[2], SingleSideForwardingTagCombine,
-  //           SimulationDomain::comm_sim_pro.comm, &send_requests[2]);
-  // MPI_Probe(ranks_recv[2], SingleSideForwardingTagCombine, SimulationDomain::comm_sim_pro.comm, &status);
-  // MPI_Get_count(&status, data_type, &num_receive[2]);
-  // receive_buff = new ChangeLattice[num_receive[2]];
-  // MPI_Recv(receive_buff, num_receive[2], data_type, ranks_recv[2],
-  //          SingleSideForwardingTagCombine, SimulationDomain::comm_sim_pro.comm, &recv_statuses[2]);
-
-  // packer.onReceiveCombine(2, receive_buff, num_receive[2], cur_sector.id, exchange_surface_x, exchange_surface_y, exchange_surface_z, p_domain);
-  // MPI_Wait(&send_requests[2], &send_statuses[2]);
-  // // release buffer
-  // delete[] send_buff;
-  // delete[] receive_buff;
-
-}
 
 
 template <class PKs, class Ins> void SubLattice::syncSimRegions(Ins &pk_inst, std::array<std::vector<ChangeLattice>, 7>& exchange_ghost, 
@@ -423,6 +314,7 @@ template <class PKs, class Ins> void SubLattice::syncSimRegions(Ins &pk_inst, st
   //   }
   // }
   const int SingleSideForwardingTag2 = 0x101;
+  const int SendCountTag2 = 0x110;
 
   SimSyncPacker packer = pk_inst.newSimCommPacker();
   // note here, communication order is from Z to Y, and X. 注意，这里的通信顺序是从Z到Y，以及X。
@@ -431,12 +323,12 @@ template <class PKs, class Ins> void SubLattice::syncSimRegions(Ins &pk_inst, st
   // comm::singleSideForwardComm<typename PKs::pack_date_type, typename PKs::pack_region_type, true>(
   //     &packer, SimulationDomain::comm_sim_pro, packer.getMPI_DataType(), send_regions, recv_regions, ranks_send,
   //     ranks_recv);
-  ChangeLattice send_count;
   const MPI_Datatype data_type = packer.getMPI_DataTypeChange();
   int num_send[comm::DIMENSION_SIZE];
   int num_receive[comm::DIMENSION_SIZE];
   ChangeLattice *send_buff;
   ChangeLattice *receive_buff;
+
   MPI_Status status;
 
   MPI_Status send_statuses[comm::DIMENSION_SIZE];
@@ -444,7 +336,8 @@ template <class PKs, class Ins> void SubLattice::syncSimRegions(Ins &pk_inst, st
   MPI_Request send_requests[comm::DIMENSION_SIZE];
   MPI_Request recv_requests[comm::DIMENSION_SIZE];
 
-  for (int d = 0; d < comm::DIMENSION_SIZE; d++) {
+  ChangeLattice send_count;
+  for (int d = 2; d > -1; d--) {
     int dim_id = d;
     // 里的通信顺序是从Z到Y，以及X。
     // if (F) {
@@ -457,7 +350,6 @@ template <class PKs, class Ins> void SubLattice::syncSimRegions(Ins &pk_inst, st
     // }
     num_send[dim_id] = packer.sendLength2(dim_id, exchange_ghost, exchange_surface_x[next_sector.id], &send_count);
     assert(num_send[dim_id] >= 0); // todo remove
-    //kiwi::logs::v(" ", "00000000000000000000000000000 .\n" );
     //if(num_send[dim_id] > 0){
     send_buff = new ChangeLattice[num_send[dim_id]];
     // 将这次要发送的数据复制到send_buff
@@ -469,7 +361,6 @@ template <class PKs, class Ins> void SubLattice::syncSimRegions(Ins &pk_inst, st
     // 将send_buff中的数据单向发送到send_ranks[dim_id]进程中
     MPI_Isend(send_buff, numsend, data_type, ranks_send[dim_id], SingleSideForwardingTag2,
               SimulationDomain::comm_sim_pro.comm, &send_requests[dim_id]);
-    //}
     // MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
     // kiwi::logs::v(" ", "1111111111111111111111111111 .\n" );
     int numrecv = 0;
@@ -500,7 +391,6 @@ template <class PKs, class Ins> void SubLattice::syncSimRegions(Ins &pk_inst, st
     packer.onReceive2(receive_buff, recv_regions[dim_id], num_receive[dim_id], dim_id, exchange_ghost, 
                       p_domain->sub_box_lattice_size, p_domain->neighbour_local_sub_box, cur_sector.id, 
                       exchange_surface_x, exchange_surface_y, exchange_surface_z, p_domain);
-
     // release buffer
     //if(num_send[dim_id] > 0) delete[] send_buff;
     delete[] send_buff;
@@ -567,7 +457,7 @@ template <class PKg, class Ins> void SubLattice::syncNextSectorGhostRegions(Ins 
   };
 
 
-  //if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", " surface commu size is : {} .\n", exchange_surface_x.size() + exchange_surface_y.size() + exchange_surface_z.size());
+  //if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", " surface commu size is : {} .\n", exchange_surface_x[next_sector.id].size() + exchange_surface_y[next_sector.id].size() + exchange_surface_z[next_sector.id].size());
 
   // do data pack
   PKg packer = pk_inst.newGhostCommPacker();
@@ -575,12 +465,12 @@ template <class PKg, class Ins> void SubLattice::syncNextSectorGhostRegions(Ins 
   //                             recv_regions, ranks_send, ranks_recv);
 
   const int SingleSideForwardingTag2 = 0x101;
-  //const MPI_Datatype data_type = packer.getMPI_DataType();
-  const MPI_Datatype data_type = packer.getMPI_DataTypeChange();
+  // const MPI_Datatype data_type = packer.getMPI_DataTypeChange();
+  const MPI_Datatype data_type = packer.getMPI_DataType();
   int num_send[comm::DIMENSION_SIZE];
   int num_receive[comm::DIMENSION_SIZE];
-  ChangeLattice *send_buff;
-  ChangeLattice *receive_buff;
+  Lattice *send_buff;
+  Lattice *receive_buff;
 
   MPI_Status status;
   MPI_Status send_statuses[comm::DIMENSION_SIZE];
@@ -592,12 +482,12 @@ template <class PKg, class Ins> void SubLattice::syncNextSectorGhostRegions(Ins 
     int dim_id = d;
     // prepare data
     // note: the direction in sendLength, onSend and onReceive are not used (ignored).
-    num_send[dim_id] = packer.sendLength2(dim_id, exchange_surface_x[next_sector.id], exchange_surface_y[next_sector.id], exchange_surface_z[next_sector.id]);
-    //num_send[dim_id] = packer.sendLength(send_regions[dim_id], dim_id, comm::DIR_LOWER);
+    //num_send[dim_id] = packer.sendLength2(dim_id, exchange_surface_x[next_sector.id], exchange_surface_y[next_sector.id], exchange_surface_z[next_sector.id]);
+    num_send[dim_id] = packer.sendLength(send_regions[dim_id], dim_id, comm::DIR_LOWER);
     assert(num_send[dim_id] >= 0); // todo remove
-    send_buff = new ChangeLattice[num_send[dim_id]];
-    packer.onSend2(send_buff, num_send[dim_id], dim_id, exchange_surface_x[next_sector.id], exchange_surface_y[next_sector.id], exchange_surface_z[next_sector.id]);
-    //packer.onSend(send_buff, send_regions[dim_id], num_send[dim_id], dim_id, comm::DIR_LOWER);
+    send_buff = new Lattice[num_send[dim_id]];
+    //packer.onSend2(send_buff, num_send[dim_id], dim_id, exchange_surface_x[next_sector.id], exchange_surface_y[next_sector.id], exchange_surface_z[next_sector.id]);
+    packer.onSend(send_buff, send_regions[dim_id], num_send[dim_id], dim_id, comm::DIR_LOWER);
     // send and received data.
     int &numsend = num_send[dim_id];
     int numrecv = 0;
@@ -610,7 +500,7 @@ template <class PKg, class Ins> void SubLattice::syncNextSectorGhostRegions(Ins 
     // initialize receive buffer via receiving size.
     // the receiving length is get bt MPI_Probe from its neighbour process.
     assert(numrecv >= 0);  // todo remove
-    receive_buff = new ChangeLattice[numrecv];
+    receive_buff = new Lattice[numrecv];
     num_receive[dim_id] = numrecv;
     MPI_Irecv(receive_buff, numrecv, data_type, ranks_recv[dim_id],
               SingleSideForwardingTag2, SimulationDomain::comm_sim_pro.comm, &recv_requests[dim_id]);
@@ -618,9 +508,9 @@ template <class PKg, class Ins> void SubLattice::syncNextSectorGhostRegions(Ins 
     // data received.
     MPI_Wait(&send_requests[dim_id], &send_statuses[dim_id]);
     MPI_Wait(&recv_requests[dim_id], &recv_statuses[dim_id]);
-    packer.onReceive2(receive_buff, num_receive[dim_id], dim_id, exchange_surface_x, exchange_surface_y, exchange_surface_z,
-                      p_domain->sub_box_lattice_size, p_domain->neighbour_local_sub_box, next_sector.id, p_domain);
-    //packer.onReceive(receive_buff, recv_regions[dim_id], num_receive[dim_id], dim_id, comm::DIR_LOWER);
+    // packer.onReceive2(receive_buff, num_receive[dim_id], dim_id, exchange_surface_x, exchange_surface_y, exchange_surface_z,
+    //                   p_domain->sub_box_lattice_size, p_domain->neighbour_local_sub_box, cur_sector.id, p_domain);
+    packer.onReceive(receive_buff, recv_regions[dim_id], num_receive[dim_id], dim_id, comm::DIR_LOWER);
     // release buffer
     delete[] send_buff;
     delete[] receive_buff;

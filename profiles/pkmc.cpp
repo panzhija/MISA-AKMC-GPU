@@ -210,15 +210,11 @@ void PKMC::onStart() {
   ABVIModel model(sim->box, config_v.attempt_freq, config_v.temperature);
   model.setColoredDomain(sim->_p_domain);
   sim->get_neighbour_local_sub_box();
-  #ifdef KMC_GPU_MODE
-    // 初始化gpu
-    initialize_gpu(kiwi::mpiUtils::global_process.own_rank);
-    // hipmalloc并且分配初始化一些常量
-    gpu_prepare(config_v.attempt_freq, config_v.temperature, sim->box->lattice_list, sim->_p_domain);
-  #endif
-  // initialize_gpu(kiwi::mpiUtils::global_process.own_rank);
+  initialize_gpu(kiwi::mpiUtils::global_process.own_rank);
+  // hipmalloc并且分配初始化一些常量
+  // gpu_prepare(config_v.attempt_freq, config_v.temperature, sim->box->lattice_list, sim->_p_domain);
   //gpu_prepare(config_v.attempt_freq, config_v.temperature, sim->box->lattice_list, sim->_p_domain);
-  //gpu_prepare(config_v.attempt_freq, config_v.temperature);
+  gpu_prepare(config_v.attempt_freq, config_v.temperature);
   MEventListener m_listener(m_counter, sim->box->lattice_list->meta);
   model.setEventListener(&m_listener);
   // run simulation
