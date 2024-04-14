@@ -56,8 +56,8 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
   // time_calculate_end = MPI_Wtime() - time_calculate_start;
   // if(SimulationDomain::comm_sim_pro.own_rank == 0) vac_time_total += time_calculate_end;
   // 扇区的执行顺序是 0, 7, 2, 5, 3, 4, 1, 6
-  // MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
-  // time_total_start = MPI_Wtime();
+  MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
+  time_total_start = MPI_Wtime();
   for (int64_t step = 0; step < time_steps; step++) { // time steps loop
     // transFirstsectToGpu(p_model, (*sec_meta.sector_itl).id);
     if(step == time_steps - 1) is_last_step = 1;
@@ -153,16 +153,16 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
       // std::cout << "rank is : " << SimulationDomain::comm_sim_pro.own_rank << "step is :  " << step << "sect is : " << sect << "time is : " << timeuse << std::endl;
       // gettimeofday(&time_start,NULL);
       //calculateNextAdvRegion(sect);
-      //time_commu_start = MPI_Wtime();
+      time_commu_start = MPI_Wtime();
 
       syncSimRegions<PKs>(pk_inst, p_model->exchange_ghost, p_model->exchange_surface_x, p_model->exchange_surface_y, p_model->exchange_surface_z);
       //syncSimGohstRegionsCombine<PKs>(pk_inst, p_model->exchange_ghost, p_model->exchange_surface_x, p_model->exchange_surface_y, p_model->exchange_surface_z);
       syncNextSectorGhostRegions<PKg>(pk_inst, p_model->exchange_surface_x, p_model->exchange_surface_y, p_model->exchange_surface_z); // communicate ghost area data of next sector in
                                                 // current process. 通信当前进程中下一个扇区的重影区域数据。
 
-      //time_commu_end = MPI_Wtime() - time_commu_start;
-      //MPI_Reduce(&time_commu_end, &max_time_commu, 1, MPI_DOUBLE, MPI_MAX, 0, SimulationDomain::comm_sim_pro.comm);
-      //if(SimulationDomain::comm_sim_pro.own_rank == 0) time_commu_total += max_time_commu;
+      time_commu_end = MPI_Wtime() - time_commu_start;
+      MPI_Reduce(&time_commu_end, &max_time_commu, 1, MPI_DOUBLE, MPI_MAX, 0, SimulationDomain::comm_sim_pro.comm);
+      if(SimulationDomain::comm_sim_pro.own_rank == 0) time_commu_total += max_time_commu;
       // gettimeofday(&time_end,NULL);
       // timeuse = (time_end.tv_sec - time_start.tv_sec) * 1.0e3 + (double)(time_end.tv_usec - time_start.tv_usec) / 1.0e3;
       // std::cout << "rank is : " << SimulationDomain::comm_sim_pro.own_rank << "step is :  " << step << "sect is : " << sect << "com_time is : " << timeuse << std::endl;
@@ -177,8 +177,8 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
     }
     p_event_hooks->onStepFinished(step);
   }
-  //MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
-  //time_total_end = MPI_Wtime() - time_total_start;
+  MPI_Barrier(SimulationDomain::comm_sim_pro.comm);
+  time_total_end = MPI_Wtime() - time_total_start;
 
   p_event_hooks->onAllDone(); //空的函数
   gpu_final();
@@ -186,7 +186,7 @@ void SubLattice::startTimeLoop(Ins pk_inst, ModelAdapter<E> *p_model, EventHooks
   // MPI_Reduce(&itera2, &max_itera2, 1, MPI_INT, MPI_MAX, 0, SimulationDomain::comm_sim_pro.comm);
   // if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", "  max_itera1  1 is : {} . \n", max_itera1);
   // if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", "  max_itera2  2 is : {} . \n", max_itera2);
-  if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", " vac time is : {} total time is : {} s. communicate time is : {} s. \n", vac_time_total, time_calculate_total, time_commu_total);
+  if(SimulationDomain::comm_sim_pro.own_rank == 0) kiwi::logs::v(" ", " vac time is : {} total time is : {} s. communicate time is : {} s. \n", vac_time_total, time_total_end, time_commu_total);
 }
 
 template <typename E> double SubLattice::calcRatesWrapper(ModelAdapter<E> *p_model, const type_sector_id sector_id, bool *sector_first, int sect, int is_last_step) {
